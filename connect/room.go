@@ -6,10 +6,11 @@
 package connect
 
 import (
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"gochat/proto"
 	"sync"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 const NoRoom = -1
@@ -18,8 +19,8 @@ type Room struct {
 	Id          int
 	OnlineCount int // room online user count
 	rLock       sync.RWMutex
-	drop        bool // make room is live
-	next        *Channel
+	drop        bool     // make room is live
+	next        *Channel //link list
 }
 
 func NewRoom(roomId int) *Room {
@@ -49,6 +50,7 @@ func (r *Room) Put(ch *Channel) (err error) {
 	return
 }
 
+//遍历root里面包含的长连接（会话链表），向每个长连接推送消息
 func (r *Room) Push(msg *proto.Msg) {
 	r.rLock.RLock()
 	for ch := r.next; ch != nil; ch = ch.Next {

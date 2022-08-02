@@ -8,15 +8,16 @@ package connect
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"gochat/proto"
 	"gochat/tools"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
-	Buckets   []*Bucket
+	Buckets   []*Bucket //server包含了若干个Bucket（组成数组）
 	Options   ServerOptions
 	bucketIdx uint32
 	operator  Operator

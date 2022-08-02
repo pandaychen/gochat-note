@@ -48,6 +48,7 @@ func (b *Bucket) PushRoom(ch chan *proto.PushRoomMsgRequest) {
 			arg  *proto.PushRoomMsgRequest
 			room *Room
 		)
+		//阻塞，接收广播消息
 		arg = <-ch
 		if room = b.Room(arg.RoomId); room != nil {
 			room.Push(&arg.Msg)
