@@ -5,16 +5,19 @@
  */
 package rpc
 
+//LOGIC模块 - RPC客户端对应调用封装
+
 import (
 	"context"
-	"github.com/rpcxio/libkv/store"
-	etcdV3 "github.com/rpcxio/rpcx-etcd/client"
-	"github.com/sirupsen/logrus"
-	"github.com/smallnest/rpcx/client"
 	"gochat/config"
 	"gochat/proto"
 	"sync"
 	"time"
+
+	"github.com/rpcxio/libkv/store"
+	etcdV3 "github.com/rpcxio/rpcx-etcd/client"
+	"github.com/sirupsen/logrus"
+	"github.com/smallnest/rpcx/client"
 )
 
 var LogicRpcClient client.XClient
@@ -23,6 +26,7 @@ var once sync.Once
 type RpcLogic struct {
 }
 
+// LOGIC-RPC-客户端
 var RpcLogicObj *RpcLogic
 
 func InitLogicRpcClient() {
