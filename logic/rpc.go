@@ -20,9 +20,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// logic RPC 服务实现接口！
+
 type RpcLogic struct {
 }
 
+// Register：用户注册服务
 func (rpc *RpcLogic) Register(ctx context.Context, args *proto.RegisterRequest, reply *proto.RegisterReply) (err error) {
 	reply.Code = config.FailReplyCode
 	u := new(dao.User)
@@ -59,7 +62,7 @@ func (rpc *RpcLogic) Register(ctx context.Context, args *proto.RegisterRequest, 
 	return
 }
 
-// Logic模块：处理用户登录方法
+// Logic：处理用户登录方法
 func (rpc *RpcLogic) Login(ctx context.Context, args *proto.LoginRequest, reply *proto.LoginResponse) (err error) {
 	reply.Code = config.FailReplyCode
 	u := new(dao.User)
@@ -102,6 +105,7 @@ func (rpc *RpcLogic) Login(ctx context.Context, args *proto.LoginRequest, reply 
 	return
 }
 
+// GetUserInfoByUserId:
 func (rpc *RpcLogic) GetUserInfoByUserId(ctx context.Context, args *proto.GetUserInfoRequest, reply *proto.GetUserInfoResponse) (err error) {
 	reply.Code = config.FailReplyCode
 	userId := args.UserId
@@ -179,6 +183,8 @@ func (rpc *RpcLogic) Logout(ctx context.Context, args *proto.LogoutRequest, repl
 *
 single send msg
 */
+
+// Push：用户点对点发送接口实现
 func (rpc *RpcLogic) Push(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
 	reply.Code = config.FailReplyCode
 	sendData := args
@@ -197,6 +203,8 @@ func (rpc *RpcLogic) Push(ctx context.Context, args *proto.Send, reply *proto.Su
 		logrus.Errorf("logic,push parse int fail:%s", err.Error())
 		return
 	}
+
+	// 将C2C数据PUSH入redis
 	err = logic.RedisPublishChannel(serverIdStr, sendData.ToUserId, bodyBytes)
 	if err != nil {
 		logrus.Errorf("logic,redis publish err: %s", err.Error())
@@ -210,6 +218,7 @@ func (rpc *RpcLogic) Push(ctx context.Context, args *proto.Send, reply *proto.Su
 *
 push msg to room
 */
+// PushRoom：向房间广播数据
 func (rpc *RpcLogic) PushRoom(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
 	reply.Code = config.FailReplyCode
 	sendData := args

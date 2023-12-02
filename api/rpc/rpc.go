@@ -27,7 +27,8 @@ type RpcLogic struct {
 }
 
 // LOGIC-RPC-客户端
-var RpcLogicObj *RpcLogic
+// 实现了一个调用logic模块的客户端，对路由的方法进行了一次封装
+var RpcLogicObj *RpcLogic //长连接
 
 func InitLogicRpcClient() {
 	once.Do(func() {

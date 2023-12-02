@@ -9,16 +9,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis"
-	"github.com/rcrowley/go-metrics"
-	"github.com/rpcxio/rpcx-etcd/serverplugin"
-	"github.com/sirupsen/logrus"
-	"github.com/smallnest/rpcx/server"
 	"gochat/config"
 	"gochat/proto"
 	"gochat/tools"
 	"strings"
 	"time"
+
+	"github.com/go-redis/redis"
+	"github.com/rcrowley/go-metrics"
+	"github.com/rpcxio/rpcx-etcd/serverplugin"
+	"github.com/sirupsen/logrus"
+	"github.com/smallnest/rpcx/server"
 )
 
 var RedisClient *redis.Client
@@ -53,6 +54,7 @@ func (logic *Logic) InitRpcServer() (err error) {
 	return
 }
 
+// 启动RPC服务
 func (logic *Logic) createRpcServer(network string, addr string) {
 	s := server.NewServer()
 	logic.addRegistryPlugin(s, network, addr)
@@ -83,6 +85,7 @@ func (logic *Logic) addRegistryPlugin(s *server.Server, network string, addr str
 	s.Plugins.Add(r)
 }
 
+// RedisPublishChannel：收到点对点msg发送请求
 func (logic *Logic) RedisPublishChannel(serverId string, toUserId int, msg []byte) (err error) {
 	redisMsg := proto.RedisMsg{
 		Op:       config.OpSingleSend,

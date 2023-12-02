@@ -6,12 +6,15 @@
 package handler
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"gochat/api/rpc"
 	"gochat/proto"
 	"gochat/tools"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
+
+//处理用户登陆相关的逻辑
 
 type FormLogin struct {
 	UserName string `form:"userName" json:"userName" binding:"required"`

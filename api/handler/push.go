@@ -6,15 +6,17 @@
 package handler
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"gochat/api/rpc"
 	"gochat/config"
 	"gochat/proto"
 	"gochat/tools"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
+// 处理消息推送逻辑
 type FormPush struct {
 	Msg       string `form:"msg" json:"msg" binding:"required"`
 	ToUserId  string `form:"toUserId" json:"toUserId" binding:"required"`

@@ -7,10 +7,11 @@ package logic
 
 import (
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"gochat/config"
 	"runtime"
+
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type Logic struct {
@@ -21,6 +22,8 @@ func New() *Logic {
 	return new(Logic)
 }
 
+// 1. 启动redis客户端
+// 2. 开启rpc服务
 func (logic *Logic) Run() {
 	//read config
 	logicConfig := config.Conf.Logic
