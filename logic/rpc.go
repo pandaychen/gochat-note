@@ -297,6 +297,7 @@ func (rpc *RpcLogic) GetRoomInfo(ctx context.Context, args *proto.Send, reply *p
 	return
 }
 
+// Connect：CONNECT模块调用的方法，完成用户的认证，用户信息的返回，房间ID的返回
 func (rpc *RpcLogic) Connect(ctx context.Context, args *proto.ConnectRequest, reply *proto.ConnectReply) (err error) {
 	if args == nil {
 		logrus.Errorf("logic,connect args empty")
@@ -306,6 +307,8 @@ func (rpc *RpcLogic) Connect(ctx context.Context, args *proto.ConnectRequest, re
 	//key := logic.getUserKey(args.AuthToken)
 	logrus.Infof("logic,authToken is:%s", args.AuthToken)
 	key := tools.GetSessionName(args.AuthToken)
+
+	// 获取用户信息
 	userInfo, err := RedisClient.HGetAll(key).Result()
 	if err != nil {
 		logrus.Infof("RedisCli HGetAll key :%s , err:%s", key, err.Error())
@@ -316,6 +319,8 @@ func (rpc *RpcLogic) Connect(ctx context.Context, args *proto.ConnectRequest, re
 		return
 	}
 	reply.UserId, _ = strconv.Atoi(userInfo["userId"])
+
+	// 根据参数的RoomId获取房间信息
 	roomUserKey := logic.getRoomUserKey(strconv.Itoa(args.RoomId))
 	if reply.UserId != 0 {
 		userKey := logic.getUserKey(fmt.Sprintf("%d", reply.UserId))
