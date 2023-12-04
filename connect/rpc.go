@@ -9,6 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gochat/config"
+	"gochat/proto"
+	"gochat/tools"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/rcrowley/go-metrics"
 	"github.com/rpcxio/libkv/store"
 	etcdV3 "github.com/rpcxio/rpcx-etcd/client"
@@ -16,12 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/smallnest/rpcx/client"
 	"github.com/smallnest/rpcx/server"
-	"gochat/config"
-	"gochat/proto"
-	"gochat/tools"
-	"strings"
-	"sync"
-	"time"
 )
 
 var logicRpcClient client.XClient
@@ -59,6 +60,8 @@ func (c *Connect) InitLogicRpcClient() (err error) {
 	return
 }
 
+// Connect：Connect.readDataFromTcp处理客户端请求协议调用
+// 返回值：经过认证ok的用户id
 func (rpc *RpcConnect) Connect(connReq *proto.ConnectRequest) (uid int, err error) {
 	reply := &proto.ConnectReply{}
 	err = logicRpcClient.Call(context.Background(), "Connect", connReq, reply)
@@ -149,10 +152,13 @@ func (rpc *RpcConnectPush) PushRoomCount(ctx context.Context, pushRoomMsgReq *pr
 	return
 }
 
+// PushRoomInfo：CONNECT服务，接收task模块发来的room信息的请求
 func (rpc *RpcConnectPush) PushRoomInfo(ctx context.Context, pushRoomMsgReq *proto.PushRoomMsgRequest, successReply *proto.SuccessReply) (err error) {
 	successReply.Code = config.SuccessReplyCode
 	successReply.Msg = config.SuccessReplyMsg
 	logrus.Infof("connect,PushRoomInfo msg %+v", pushRoomMsgReq)
+
+	// 遍历DefaultServer下的Buckets，把pushRoomMsgReq发送
 	for _, bucket := range DefaultServer.Buckets {
 		bucket.BroadcastRoom(pushRoomMsgReq)
 	}

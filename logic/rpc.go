@@ -219,6 +219,7 @@ func (rpc *RpcLogic) Push(ctx context.Context, args *proto.Send, reply *proto.Su
 push msg to room
 */
 // PushRoom：向房间广播数据
+// 在connect模块的readDataFromTcp()方法中会被调用，用于点对点发送消息
 func (rpc *RpcLogic) PushRoom(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
 	reply.Code = config.FailReplyCode
 	sendData := args
@@ -259,6 +260,8 @@ func (rpc *RpcLogic) PushRoom(ctx context.Context, args *proto.Send, reply *prot
 *
 get room online person count
 */
+
+// Count：获取当前room里面的实时用户数并推送给房间内用户
 func (rpc *RpcLogic) Count(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
 	reply.Code = config.FailReplyCode
 	roomId := args.RoomId
@@ -278,11 +281,24 @@ func (rpc *RpcLogic) Count(ctx context.Context, args *proto.Send, reply *proto.S
 *
 get room info
 */
+
+// GetRoomInfo：获取ROOM内的实时在线用户列表并推送给房间内用户
+/*
+	房间结构是redis的hashtable
+	127.0.0.1:6379> hgetall gochat_room_${roomid}
+1) "1"		#userid
+2) "usernameA"
+3) "2"
+4) "usernameB"
+5) "3"
+6) "usernameC"
+*/
 func (rpc *RpcLogic) GetRoomInfo(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
 	reply.Code = config.FailReplyCode
 	logic := new(Logic)
 	roomId := args.RoomId
 	roomUserInfo := make(map[string]string)
+	//
 	roomUserKey := logic.getRoomUserKey(strconv.Itoa(roomId))
 	roomUserInfo, err = RedisClient.HGetAll(roomUserKey).Result()
 	if len(roomUserInfo) == 0 {
@@ -308,7 +324,7 @@ func (rpc *RpcLogic) Connect(ctx context.Context, args *proto.ConnectRequest, re
 	logrus.Infof("logic,authToken is:%s", args.AuthToken)
 	key := tools.GetSessionName(args.AuthToken)
 
-	// 获取用户信息
+	// 获取authtoken从redis获取用户信息
 	userInfo, err := RedisClient.HGetAll(key).Result()
 	if err != nil {
 		logrus.Infof("RedisCli HGetAll key :%s , err:%s", key, err.Error())
@@ -318,6 +334,7 @@ func (rpc *RpcLogic) Connect(ctx context.Context, args *proto.ConnectRequest, re
 		reply.UserId = 0
 		return
 	}
+
 	reply.UserId, _ = strconv.Atoi(userInfo["userId"])
 
 	// 根据参数的RoomId获取房间信息
@@ -331,6 +348,7 @@ func (rpc *RpcLogic) Connect(ctx context.Context, args *proto.ConnectRequest, re
 			logrus.Warnf("logic set err:%s", err)
 		}
 		if RedisClient.HGet(roomUserKey, fmt.Sprintf("%d", reply.UserId)).Val() == "" {
+			//将用户放入指定的房间内
 			RedisClient.HSet(roomUserKey, fmt.Sprintf("%d", reply.UserId), userInfo["userName"])
 			// add room user count ++
 			RedisClient.Incr(logic.getRoomOnlineCountKey(fmt.Sprintf("%d", args.RoomId)))

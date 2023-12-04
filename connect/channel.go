@@ -6,22 +6,24 @@
 package connect
 
 import (
-	"github.com/gorilla/websocket"
 	"gochat/proto"
 	"net"
+
+	"github.com/gorilla/websocket"
 )
 
-//in fact, Channel it's a user Connect session
+// in fact, Channel it's a user Connect session
 type Channel struct {
 	Room      *Room
 	Next      *Channel
 	Prev      *Channel
 	broadcast chan *proto.Msg
 	userId    int
-	conn      *websocket.Conn
-	connTcp   *net.TCPConn
+	conn      *websocket.Conn //关联WEBSOCKET
+	connTcp   *net.TCPConn    //关联TCP
 }
 
+// NewChannel：创建一个新会话
 func NewChannel(size int) (c *Channel) {
 	c = new(Channel)
 	c.broadcast = make(chan *proto.Msg, size)

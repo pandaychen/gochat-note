@@ -7,14 +7,16 @@ package connect
 
 import (
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"gochat/config"
 	_ "net/http/pprof"
 	"runtime"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
+// 默认CONNECT模块只有一个Server
 var DefaultServer *Server
 
 type Connect struct {

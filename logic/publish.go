@@ -88,7 +88,7 @@ func (logic *Logic) addRegistryPlugin(s *server.Server, network string, addr str
 // RedisPublishChannel：收到点对点msg发送请求
 func (logic *Logic) RedisPublishChannel(serverId string, toUserId int, msg []byte) (err error) {
 	redisMsg := proto.RedisMsg{
-		Op:       config.OpSingleSend,
+		Op:       config.OpSingleSend, //C2C
 		ServerId: serverId,
 		UserId:   toUserId,
 		Msg:      msg,
@@ -99,6 +99,8 @@ func (logic *Logic) RedisPublishChannel(serverId string, toUserId int, msg []byt
 		return err
 	}
 	redisChannel := config.QueueName
+
+	//压入redis list
 	if err := RedisClient.LPush(redisChannel, redisMsgStr).Err(); err != nil {
 		logrus.Errorf("logic,lpush err:%s", err.Error())
 		return err
@@ -108,7 +110,7 @@ func (logic *Logic) RedisPublishChannel(serverId string, toUserId int, msg []byt
 
 func (logic *Logic) RedisPublishRoomInfo(roomId int, count int, RoomUserInfo map[string]string, msg []byte) (err error) {
 	var redisMsg = &proto.RedisMsg{
-		Op:           config.OpRoomSend,
+		Op:           config.OpRoomSend, //C2ALL
 		RoomId:       roomId,
 		Count:        count,
 		Msg:          msg,
@@ -119,6 +121,7 @@ func (logic *Logic) RedisPublishRoomInfo(roomId int, count int, RoomUserInfo map
 		logrus.Errorf("logic,RedisPublishRoomInfo redisMsg error : %s", err.Error())
 		return
 	}
+	//同上
 	err = RedisClient.LPush(config.QueueName, redisMsgByte).Err()
 	if err != nil {
 		logrus.Errorf("logic,RedisPublishRoomInfo redisMsg error : %s", err.Error())
@@ -148,7 +151,7 @@ func (logic *Logic) RedisPushRoomCount(roomId int, count int) (err error) {
 
 func (logic *Logic) RedisPushRoomInfo(roomId int, count int, roomUserInfo map[string]string) (err error) {
 	var redisMsg = &proto.RedisMsg{
-		Op:           config.OpRoomInfoSend,
+		Op:           config.OpRoomInfoSend, //room房间信息（人员列表）推送
 		RoomId:       roomId,
 		Count:        count,
 		RoomUserInfo: roomUserInfo,
@@ -158,6 +161,8 @@ func (logic *Logic) RedisPushRoomInfo(roomId int, count int, roomUserInfo map[st
 		logrus.Errorf("logic,RedisPushRoomInfo redisMsg error : %s", err.Error())
 		return
 	}
+
+	// 将room内实时用户列表的数据推送到队列
 	err = RedisClient.LPush(config.QueueName, redisMsgByte).Err()
 	if err != nil {
 		logrus.Errorf("logic,RedisPushRoomInfo redisMsg error : %s", err.Error())

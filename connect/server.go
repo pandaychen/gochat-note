@@ -16,11 +16,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// 一个CONNECT包含1个Server
 type Server struct {
-	Buckets   []*Bucket //server包含了若干个Bucket（组成数组）
+	Buckets   []*Bucket //server包含了若干个Bucket（组成数组）,这里设计成[]的目的是减少lock争用，会按照客户端ID进行hash去模
 	Options   ServerOptions
 	bucketIdx uint32
-	operator  Operator
+	operator  Operator //RpcConnect
 }
 
 type ServerOptions struct {
@@ -42,7 +43,7 @@ func NewServer(b []*Bucket, o Operator, options ServerOptions) *Server {
 	return s
 }
 
-//reduce lock competition, use google city hash insert to different bucket
+// reduce lock competition, use google city hash insert to different bucket
 func (s *Server) Bucket(userId int) *Bucket {
 	userIdStr := fmt.Sprintf("%d", userId)
 	idx := tools.CityHash32([]byte(userIdStr), uint32(len(userIdStr))) % s.bucketIdx
@@ -88,8 +89,11 @@ func (s *Server) writePump(ch *Channel, c *Connect) {
 	}
 }
 
+// readPump: websocket长连接下的房间连接处理
+// websocket仅有一种读，其他的数据都是通过写方式
 func (s *Server) readPump(ch *Channel, c *Connect) {
 	defer func() {
+		//异常退出的场景如何回收？
 		logrus.Infof("start exec disConnect ...")
 		if ch.Room == nil || ch.userId == 0 {
 			logrus.Infof("roomId and userId eq 0")
@@ -100,7 +104,9 @@ func (s *Server) readPump(ch *Channel, c *Connect) {
 		disConnectRequest := new(proto.DisConnectRequest)
 		disConnectRequest.RoomId = ch.Room.Id
 		disConnectRequest.UserId = ch.userId
+		//退出时，删除channel
 		s.Bucket(ch.userId).DeleteChannel(ch)
+		//调用CONNECT模块的DisConnect 断开连接
 		if err := s.operator.DisConnect(disConnectRequest); err != nil {
 			logrus.Warnf("DisConnect err :%s", err.Error())
 		}

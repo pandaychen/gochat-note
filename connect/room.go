@@ -50,10 +50,15 @@ func (r *Room) Put(ch *Channel) (err error) {
 	return
 }
 
-//遍历root里面包含的长连接（会话链表），向每个长连接推送消息
+// Push：遍历root里面包含的长连接（会话链表），向每个长连接推送消息
 func (r *Room) Push(msg *proto.Msg) {
+	// 遍历链表
 	r.rLock.RLock()
+
+	//遍历该房间的所有channel，写入消息
 	for ch := r.next; ch != nil; ch = ch.Next {
+
+		// 向channel中写入msg(Channel.broadcast这个broadcast chan *proto.Msg)
 		if err := ch.Push(msg); err != nil {
 			logrus.Infof("push msg err:%s", err.Error())
 		}

@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"github.com/sirupsen/logrus"
 	"gochat/api/rpc"
 	"gochat/config"
 	"gochat/pkg/stickpackage"
@@ -17,6 +16,8 @@ import (
 	"net"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const maxInt = 1<<31 - 1
@@ -86,14 +87,20 @@ func (c *Connect) acceptTcp(listener *net.TCPListener) {
 	}
 }
 
+// ServeTcp：处理业务逻辑（新连接）
 func (c *Connect) ServeTcp(server *Server, conn *net.TCPConn, r int) {
 	var ch *Channel
+	// 接收一个新连接，需要新建一个新的会话，然后把会话放在room中
 	ch = NewChannel(server.Options.BroadcastSize)
 	ch.connTcp = conn
+	// 针对每个TCP连接，都开启两个独立的goroutine，一个处理读、另一个处理写
 	go c.writeDataToTcp(server, ch)
 	go c.readDataFromTcp(server, ch)
 }
 
+// readDataFromTcp：接收协议并处理
+// 注意，这里为什么传入ch *Channel？因为要根据用户发送的数据来修改ch的值，比如ch加入哪个room？哪个bucket？
+// 可借鉴：收包处理
 func (c *Connect) readDataFromTcp(s *Server, ch *Channel) {
 	defer func() {
 		logrus.Infof("start exec disConnect ...")
@@ -160,13 +167,17 @@ func (c *Connect) readDataFromTcp(s *Server, ch *Channel) {
 				logrus.Errorf("tcp roomId not allow lgt 0")
 				return
 			}
+			// tcp协议处理
 			switch rawTcpMsg.Op {
 			case config.OpBuildTcpConn:
+				// 处理客户端新建连接的协议包
 				connReq.AuthToken = rawTcpMsg.AuthToken
-				connReq.RoomId = rawTcpMsg.RoomId
+				connReq.RoomId = rawTcpMsg.RoomId //客户端希望连接到哪个room
 				//fix
 				//connReq.ServerId = config.Conf.Connect.ConnectTcp.ServerId
 				connReq.ServerId = c.ServerId
+
+				//调用RpcConnect.Connec方法，获取用户id
 				userId, err := s.operator.Connect(&connReq)
 				logrus.Infof("tcp s.operator.Connect userId is :%d", userId)
 				if err != nil {
@@ -177,8 +188,14 @@ func (c *Connect) readDataFromTcp(s *Server, ch *Channel) {
 					logrus.Error("tcp Invalid AuthToken ,userId empty")
 					return
 				}
+
+				//按照用户id（userID）获取到响应的Bucket数组下标
 				b := s.Bucket(userId)
 				//insert into a bucket
+
+				//把此connection(channel)放在此bucket中
+				//1. 将此客户端放在bucket.rooms中，如果没有就新建一个，唯一的room_id
+				//2. 将ch(channel)挂在上面的room中
 				err = b.Put(userId, connReq.RoomId, ch)
 				if err != nil {
 					logrus.Errorf("tcp conn put room err: %s", err.Error())
@@ -187,11 +204,12 @@ func (c *Connect) readDataFromTcp(s *Server, ch *Channel) {
 				}
 			case config.OpRoomSend:
 				//send tcp msg to room
+				// 发送向房间内广播的消息
 				req := &proto.Send{
 					Msg:          rawTcpMsg.Msg,
 					FromUserId:   rawTcpMsg.FromUserId,
 					FromUserName: rawTcpMsg.FromUserName,
-					RoomId:       rawTcpMsg.RoomId,
+					RoomId:       rawTcpMsg.RoomId, //待广播的roomid
 					Op:           config.OpRoomSend,
 				}
 				code, msg := rpc.RpcLogicObj.PushRoom(req)
@@ -205,6 +223,7 @@ func (c *Connect) readDataFromTcp(s *Server, ch *Channel) {
 	}
 }
 
+// writeDataToTcp
 func (c *Connect) writeDataToTcp(s *Server, ch *Channel) {
 	//ping time default 54s
 	ticker := time.NewTicker(DefaultServer.Options.PingPeriod)

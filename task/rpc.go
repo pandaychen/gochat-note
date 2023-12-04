@@ -9,16 +9,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/rpcxio/libkv/store"
-	etcdV3 "github.com/rpcxio/rpcx-etcd/client"
-	"github.com/sirupsen/logrus"
-	"github.com/smallnest/rpcx/client"
 	"gochat/config"
 	"gochat/proto"
 	"gochat/tools"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rpcxio/libkv/store"
+	etcdV3 "github.com/rpcxio/rpcx-etcd/client"
+	"github.com/sirupsen/logrus"
+	"github.com/smallnest/rpcx/client"
 )
 
 var RClient = &RpcConnectClient{
@@ -38,6 +39,7 @@ type RpcConnectClient struct {
 	IndexMap     map[string]int        //serverId--index
 }
 
+// GetRpcClientByServerId：根据serverid获取RPCclient
 func (rc *RpcConnectClient) GetRpcClientByServerId(serverId string) (c client.XClient, err error) {
 	rc.lock.Lock()
 	defer rc.lock.Unlock()
@@ -55,7 +57,9 @@ func (rc *RpcConnectClient) GetRpcClientByServerId(serverId string) (c client.XC
 	return ins.Client, nil
 }
 
+// 获取所有的CONNECT服务器
 func (rc *RpcConnectClient) GetAllConnectTypeRpcClient() (rpcClientList []client.XClient) {
+	//少lock？
 	for serverId, _ := range rc.ServerInsMap {
 		c, err := rc.GetRpcClientByServerId(serverId)
 		if err != nil {
@@ -78,6 +82,9 @@ func getParamByKey(s string, key string) string {
 	return ""
 }
 
+///////TASK消费接口实现
+
+// task模块：与connect模块建立长连接
 func (task *Task) InitConnectRpcClient() (err error) {
 	etcdConfigOption := &store.Config{
 		ClientTLS:         nil,
@@ -168,11 +175,13 @@ func (task *Task) watchServicesChange(d client.ServiceDiscovery) {
 		}
 		RClient.lock.Lock()
 		RClient.ServerInsMap = insMap
+		//重新生成map并赋值
 		RClient.lock.Unlock()
 
 	}
 }
 
+// pushSingleToConnect
 func (task *Task) pushSingleToConnect(serverId string, userId int, msg []byte) {
 	logrus.Infof("pushSingleToConnect Body %s", string(msg))
 	pushMsgReq := &proto.PushMsgRequest{
@@ -207,6 +216,8 @@ func (task *Task) broadcastRoomToConnect(roomId int, msg []byte) {
 		},
 	}
 	reply := &proto.SuccessReply{}
+
+	// 获取所有的connect-rpc-client
 	rpcList := RClient.GetAllConnectTypeRpcClient()
 	for _, rpc := range rpcList {
 		logrus.Infof("broadcastRoomToConnect rpc  %v", rpc)
@@ -236,6 +247,7 @@ func (task *Task) broadcastRoomCountToConnect(roomId, count int) {
 		},
 	}
 	reply := &proto.SuccessReply{}
+	// 由于task模块，不知道某个room存在于哪台CONNECT服务器上，所以这里是把消息发送给所有在线的CONNECT服务器
 	rpcList := RClient.GetAllConnectTypeRpcClient()
 	for _, rpc := range rpcList {
 		logrus.Infof("broadcastRoomCountToConnect rpc  %v", rpc)
@@ -244,6 +256,7 @@ func (task *Task) broadcastRoomCountToConnect(roomId, count int) {
 	}
 }
 
+// task.broadcastRoomInfoToConnect： 推送room信息（人员列表）到CONNECT服务器
 func (task *Task) broadcastRoomInfoToConnect(roomId int, roomUserInfo map[string]string) {
 	msg := &proto.RedisRoomInfo{
 		Count:        len(roomUserInfo),
@@ -267,6 +280,7 @@ func (task *Task) broadcastRoomInfoToConnect(roomId int, roomUserInfo map[string
 		},
 	}
 	reply := &proto.SuccessReply{}
+	// 由于task模块，不知道某个room存在于哪台CONNECT服务器上，所以这里是把消息发送给所有在线的CONNECT服务器
 	rpcList := RClient.GetAllConnectTypeRpcClient()
 	for _, rpc := range rpcList {
 		logrus.Infof("broadcastRoomInfoToConnect rpc  %v", rpc)
